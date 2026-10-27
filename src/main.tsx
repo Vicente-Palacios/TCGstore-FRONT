@@ -4,11 +4,14 @@ import App from "./App.tsx";
 import { AuthProvider, type AuthProviderProps } from "react-oidc-context";
 import "./index.css";
 
-// Configuración exacta vinculada a tu User Pool de Ohio
+// Configuración de Cognito (User Pool de us-east-1). Los valores salen de variables de entorno:
+// .env.local en tu máquina, o Environment Variables en Vercel.
 const cognitoAuthConfig: AuthProviderProps = {
-  authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_8UDdDr2x9",
-  client_id: "78b55gc5igts737rhgt55r6ftr",
-  redirect_uri: "http://localhost:5173",
+  authority: import.meta.env.VITE_COGNITO_AUTHORITY,
+  client_id: import.meta.env.VITE_COGNITO_CLIENT_ID,
+  // Funciona igual en local (http://localhost:5173) y en producción (URL de Vercel).
+  // Esa URL debe estar registrada en las Callback URLs del App client de Cognito.
+  redirect_uri: window.location.origin,
   response_type: "code",
   scope: "email openid phone",
   onSigninCallback: () => {
