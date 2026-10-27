@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useAuth } from "react-oidc-context";
+import { generarInforme } from "../api/informesApi";
 import { useCards } from "../context/CardsContext";
 import CardGrid from "../components/CardGrid";
 import CardFormPanel from "../components/CardFormPanel";
@@ -7,6 +9,13 @@ import { colors, fonts, radius, shadow } from "../theme";
 
 export default function AdminPage() {
   const { cards, loading, error, create, update, remove } = useCards();
+  const auth = useAuth();
+  const token = auth.user?.id_token;
+
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportMessage, setReportMessage] = useState<
+    { kind: "ok" | "error"; text: string } | null
+  >(null);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
@@ -56,6 +65,26 @@ export default function AdminPage() {
     }
   }
 
+  async function handleGenerarInforme() {
+    if (!token) {
+      setReportMessage({ kind: "error", text: "No hay sesión activa" });
+      return;
+    }
+    setReportLoading(true);
+    setReportMessage(null);
+    try {
+      const res = await generarInforme(token);
+      setReportMessage({
+        kind: "ok",
+        text: `Informe solicitado (${res.informeId.slice(0, 8)}…). Se publicará un aviso cuando esté listo.`,
+      });
+    } catch (err) {
+      setReportMessage({ kind: "error", text: (err as Error).message });
+    } finally {
+      setReportLoading(false);
+    }
+  }
+
   const currency = new Intl.NumberFormat("es-CL", {
     style: "currency",
     currency: "USD",
@@ -71,10 +100,33 @@ export default function AdminPage() {
             Control total del inventario · acceso exclusivo Admin
           </p>
         </div>
-        <button style={styles.addButton} onClick={openCreatePanel}>
-          Nueva carta
-        </button>
+        <div style={styles.actions}>
+          <button
+            style={{
+              ...styles.reportButton,
+              opacity: reportLoading ? 0.6 : 1,
+              cursor: reportLoading ? "not-allowed" : "pointer",
+            }}
+            onClick={handleGenerarInforme}
+            disabled={reportLoading}
+          >
+            {reportLoading ? "Solicitando…" : "Generar informe"}
+          </button>
+          <button style={styles.addButton} onClick={openCreatePanel}>
+            Nueva carta
+          </button>
+        </div>
       </div>
+
+      {reportMessage && (
+        <p
+          style={
+            reportMessage.kind === "ok" ? styles.successBanner : styles.errorBanner
+          }
+        >
+          {reportMessage.text}
+        </p>
+      )}
 
       <div style={styles.statsRow}>
         <div style={styles.statCard}>
@@ -137,6 +189,30 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "13px",
     color: colors.onMatMuted,
     margin: 0,
+  },
+  actions: {
+    display: "flex",
+    gap: "10px",
+    flexWrap: "wrap",
+  },
+  reportButton: {
+    padding: "12px 20px",
+    borderRadius: radius.md,
+    border: `1px solid ${colors.gold}`,
+    background: "transparent",
+    color: colors.gold,
+    fontWeight: 600,
+    fontSize: "14px",
+    cursor: "pointer",
+  },
+  successBanner: {
+    fontSize: "13px",
+    color: colors.onMat,
+    background: colors.mat,
+    border: `1px solid ${colors.matLine}`,
+    borderRadius: radius.md,
+    padding: "12px 16px",
+    marginBottom: "20px",
   },
   addButton: {
     padding: "12px 20px",
