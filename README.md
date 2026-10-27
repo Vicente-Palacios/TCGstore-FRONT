@@ -1,147 +1,82 @@
-```
-        ██████████████
-      ██░░░░░░░░░░░░░░██
-    ██░░░░░░██░░██░░░░░░██
-    ██░░░░░░░░░░░░░░░░░░██        ┌──────────────────────────┐
-    ██░░██░░░░░░░░░░██░░██        │  ♠  T C G   S T O R E  ♠ │
-    ████░░░░▓▓▓▓▓▓░░░░████        │  ────────────────────── │
-      ██░░░░▓▓▓▓▓▓░░░░██          │   ⚡ Pikachu            │
-        ██░░░░░░░░░░██            │   Pokémon · Común       │
-      ██░░██░░░░░░██░░██          │   PV 60      Rojo       │
-      ██░░░░██████░░░░██          │  ────────────────────── │
-        ██░░░░░░░░░░██            │   Panel de Inventario    │
-          ██░░░░░░██              │   Frontend · React 19    │
-            ██████                └──────────────────────────┘
-```
+# TCGstore — Frontend
 
-# TCG Store — Frontend (Panel de Inventario)
+Aplicación web de TCGstore para consultar y administrar cartas coleccionables y solicitar informes. Desarrollada con React, TypeScript y Vite. La autenticación se integra con Amazon Cognito y las solicitudes de datos se envían a la API configurada, normalmente AWS API Gateway.
 
-Frontend en **React + TypeScript + Vite** para la plataforma **TCG Store**, la solución de gestión unificada para una red de tiendas de cartas coleccionables (TCG). Esta aplicación es el **panel de inventario**: permite iniciar sesión con AWS Cognito, listar cartas, buscarlas/filtrarlas por juego, y crear, editar o eliminar registros según el rol del usuario.
+## Funcionalidades
 
-> Este repositorio es el cliente web. El backend (API REST) vive en un repositorio aparte — ver [`TCGstore` (backend)](#) — y ambos se comunican a través de AWS API Gateway.
+- Inicio de sesión con Cognito mediante OpenID Connect y flujo Authorization Code.
+- Catálogo con búsqueda y filtros, carrito y vistas de inventario y administración.
+- Creación y edición de cartas para Admin y Colaborador; eliminación para Admin.
+- Solicitud de informes desde la vista de administración para Admin.
+- Rutas protegidas y adaptación de la interfaz según grupos de Cognito.
 
----
+La autorización definitiva se aplica en el BFF. El carrito es estado del cliente; no se documenta como venta persistida ni como integración de pagos.
 
-## 🧩 Contexto del proyecto
+## Tecnologías
 
-TCG Store nace del caso de una red de 20 tiendas de cartas coleccionables que necesita unificar ventas, inventario, pedidos, notificaciones y reportes en una sola plataforma, con login corporativo, control de acceso por rol y trazabilidad de cada acción sobre el negocio.
+React 19, TypeScript, Vite, React Router, `react-oidc-context`, `oidc-client-ts` y API `fetch`.
 
-Esta entrega corresponde al **módulo de inventario de cartas** de esa plataforma: la base sobre la que se construyen los siguientes módulos (ventas, pedidos, notificaciones, analítica). El resto de los sistemas descritos en el caso (mensajería con RabbitMQ, streaming con Kafka, microservicios adicionales) forman parte del roadmap del proyecto y no están incluidos en esta versión del frontend.
+## Requisitos
 
-### Decisiones de implementación vs. el enunciado original
+- Node.js compatible con las versiones de Vite del proyecto y npm. Se recomienda Node 24 LTS.
+- Un User Pool de Cognito, cliente SPA y API configurados para el ambiente elegido.
 
-| Enunciado del caso | Implementado en este proyecto |
-|---|---|
-| Login corporativo con Azure AD (IDaaS) | **Amazon Cognito** (User Pool) como proveedor de identidad, vía `react-oidc-context` |
-| Frontend Angular con MSAL | **React 19 + TypeScript + Vite**, con `oidc-client-ts` para el flujo OIDC |
-| Backend detrás de AWS API Gateway | ✅ Se mantiene: todas las peticiones pasan por **API Gateway** antes de llegar al backend |
-| Despliegue en AWS EC2 con Docker | ✅ Se mantiene para el backend (ver README del backend) |
+## Instalación y ejecución
 
----
+Desde la carpeta raíz del frontend, en PowerShell:
 
-## 🔐 Autenticación y roles
-
-La app usa el flujo **Authorization Code (OIDC)** contra un **User Pool de Amazon Cognito**. Al iniciar sesión, el token entrega el claim `cognito:groups`, que la interfaz usa para determinar el rol del usuario y habilitar o esconder acciones:
-
-| Rol (grupo de Cognito) | Puede ver | Puede crear/editar | Puede eliminar |
-|---|:---:|:---:|:---:|
-| **Cliente** | ✅ | ❌ | ❌ |
-| **Colaborador** | ✅ | ✅ | ❌ |
-| **Admin** | ✅ | ✅ | ✅ |
-
-El `id_token` emitido por Cognito se envía en cada request al backend como `Authorization: Bearer <token>`, y el backend vuelve a validar el rol contra ese mismo token (la UI nunca es la única barrera de seguridad).
-
----
-
-## 🛠️ Stack técnico
-
-- **React 19** + **TypeScript**
-- **Vite** (dev server / build)
-- **react-oidc-context** + **oidc-client-ts** — integración OIDC con Cognito
-- **oxlint** — linting
-- Estilos con objetos `CSSProperties` inline (sin librería de UI externa), tema centralizado en `src/theme.ts`
-- Consumo de API vía `fetch` nativo (`src/api/cardsApi.ts`)
-
----
-
-## 📂 Estructura del proyecto
-
-```
-src/
-├── api/
-│   └── cardsApi.ts        # Cliente HTTP hacia el backend (fetch + Bearer token)
-├── components/
-│   ├── AuthShell.tsx      # Layout para pantallas de login/carga/error
-│   ├── LoginPanel.tsx     # Login, estados de carga y error de Cognito
-│   ├── TopBar.tsx         # Barra superior: usuario, roles, logout
-│   ├── CardGrid.tsx       # Búsqueda, filtro por juego y grilla de cartas
-│   ├── CardTile.tsx       # Tarjeta individual (vista + acciones)
-│   └── CardFormPanel.tsx  # Formulario de creación/edición
-├── config.ts               # URL base de la API (API Gateway)
-├── theme.ts                 # Paleta de colores, tipografías, radios
-├── types.ts                  # Tipos Card / CardInput + catálogos (juegos, rarezas, estados)
-├── App.tsx                    # Orquestación: auth, estado del inventario, permisos
-└── main.tsx                    # Bootstrap de React + configuración de Cognito (AuthProvider)
+```powershell
+npm ci
+Copy-Item .env.example .env.local
 ```
 
----
+Edita `.env.local` con los valores de tu ambiente:
 
-## 🚀 Puesta en marcha local
+```dotenv
+VITE_COGNITO_AUTHORITY=https://cognito-idp.<region>.amazonaws.com/<user-pool-id>
+VITE_COGNITO_CLIENT_ID=<client-id>
+VITE_API_BASE_URL=https://<api-gateway>
+```
 
-### Requisitos
-- Node.js 18+
-- Un User Pool de Cognito ya configurado (o las credenciales del ambiente compartido del equipo)
+La URL de la API debe ir sin barra final. Configura en Cognito la URL exacta del frontend como callback, por ejemplo `http://localhost:5173`; revisa también la configuración de cierre de sesión. La API debe permitir el origen mediante CORS.
 
-### Instalación
-
-```bash
-npm install
+```powershell
 npm run dev
 ```
 
-La app queda disponible en `http://localhost:5173`.
+Abre la URL indicada por Vite, normalmente `http://localhost:5173`.
 
-### Configuración
+| Comando | Función |
+| --- | --- |
+| `npm run dev` | Inicia el servidor de desarrollo. |
+| `npm run build` | Comprueba TypeScript y genera `dist/`. |
+| `npm run preview` | Sirve localmente el build generado. |
+| `npm run lint` | Ejecuta oxlint. |
 
-Actualmente la configuración vive directamente en el código (pensado para el ambiente de desarrollo/demo del equipo):
+## Configuración en Vercel
 
-- **`src/config.ts`** → `API_BASE_URL`: endpoint de API Gateway que expone el backend.
-- **`src/main.tsx`** → `cognitoAuthConfig`: `authority`, `client_id` y `redirect_uri` del User Pool de Cognito.
+Importa el repositorio en Vercel, configura las tres variables `VITE_*` para el ambiente correspondiente y realiza un nuevo despliegue después de modificarlas: Vite las incorpora al compilar. `vercel.json` configura la reescritura para las rutas de la SPA. Agrega el origen de Vercel a las callback URLs de Cognito y a CORS del API Gateway.
 
-> 💡 Mejora sugerida para producción: mover estos valores a variables de entorno (`import.meta.env.VITE_*`) para no hardcodear IDs de Cognito ni URLs de API por ambiente.
+Las variables `VITE_*` quedan expuestas en el navegador: **no incluyas contraseñas, claves secretas, credenciales de AWS ni el secreto del Gateway**.
 
-### Scripts disponibles
+## Comunicación y seguridad
 
-| Comando | Descripción |
-|---|---|
-| `npm run dev` | Levanta el servidor de desarrollo (Vite + HMR) |
-| `npm run build` | Compila TypeScript y genera el build de producción |
-| `npm run preview` | Sirve el build de producción localmente |
-| `npm run lint` | Corre oxlint sobre el proyecto |
+El cliente usa `/api/cards` para el catálogo y `POST /api/informes/generar` para solicitar informes. La respuesta `202` indica que la solicitud fue aceptada, no que el informe ya terminó.
 
----
+En esta versión `CardsContext` envía `access_token` y `AdminPage` envía `id_token` para informes. Hay que comprobar que el API Gateway y el BFF admitan los tokens enviados, validen el cliente y apliquen los permisos esperados; los scopes no se deben dar por validados solo porque existan en el token. No subas tokens reales a Git.
 
-## 🔌 Endpoints consumidos
+## Estructura
 
-Todas las llamadas van contra `API_BASE_URL` (API Gateway) e incluyen el header `Authorization: Bearer <id_token>`.
+- `src/api/`: llamadas HTTP para cartas e informes.
+- `src/components/`, `src/pages/` y `src/layouts/`: interfaz.
+- `src/context/`: estado del catálogo y carrito.
+- `src/hooks/` y `src/routes/`: roles y protección de rutas.
+- `src/main.tsx`: configuración de Cognito y arranque.
+- `src/config.ts`: dirección base de la API.
 
-| Acción | Método | Endpoint | Rol mínimo requerido |
-|---|---|---|---|
-| Listar cartas | `GET` | `/api/cards` | Cualquier usuario autenticado |
-| Ver una carta | `GET` | `/api/cards/{id}` | Cualquier usuario autenticado |
-| Crear carta | `POST` | `/api/cards` | Colaborador / Admin |
-| Editar carta (reemplazo completo) | `PUT` | `/api/cards/{id}` | Colaborador / Admin |
-| Eliminar carta | `DELETE` | `/api/cards/{id}` | Admin |
+## Solución de problemas
 
-El detalle completo de contratos (DTOs), respuestas de error y variables de entorno del backend está en el README del repositorio backend.
-
----
-
-## ✨ Funcionalidades actuales
-
-- Login/logout contra Cognito con manejo de estados de carga y error.
-- Listado de cartas con **búsqueda** por nombre/edición y **filtro** por juego (Pokémon, Magic, Yu-Gi-Oh!, etc.), calculados en el cliente.
-- Alta, edición y baja de cartas mediante un panel lateral con validación básica de formulario.
-- Actualización optimista al eliminar (se revierte si la API falla).
-- UI adaptada por rol: los usuarios de solo lectura ven un aviso y no tienen acceso a los botones de edición/borrado.
-
+- **Error al iniciar sesión:** comprueba issuer, client ID y callback URL en Cognito.
+- **Error CORS:** habilita el origen exacto y los métodos/cabeceras necesarios en API Gateway.
+- **401 o 403:** revisa token, configuración del authorizer y grupo del usuario; 403 también puede indicar falta de permisos.
+- **Variables cambiadas en Vercel sin efecto:** vuelve a desplegar el frontend.
